@@ -33,7 +33,8 @@ pub fn build_witness_polys<E: Pairing>(
 
     let mut a_evals: Vec<E::ScalarField> = values
         .iter()
-        .map(|v| E::ScalarField::from(*v))
+        .copied()
+        .map(E::ScalarField::from)
         .collect();
 
     a_evals.extend(vec![E::ScalarField::from(1u64); domain_size - degree]);
