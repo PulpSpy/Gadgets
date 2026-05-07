@@ -2,7 +2,6 @@
 //! This mirrors the learning-oriented mult2 pattern from Plonkbook:
 //! https://plonkbook.org/docs/gadgets/mult2/
 
-
 use ark_bls12_381::Fr;
 use ark_ff::{One, Zero};
 use ark_poly::{
@@ -21,11 +20,19 @@ fn suffix_product_accumulator(evals: &[Fr]) -> Vec<Fr> {
 }
 
 fn main() {
-    // Demo inputs: prove their product is encoded by the accumulator polynomial.
-    let values: Vec<u64> = vec![2, 3, 5, 7];
-    let degree = values.len();
-    let domain_size = degree.next_power_of_two();
-    let domain = Radix2EvaluationDomain::<Fr>::new(domain_size).expect("unsupported domain size");
+    // Array of values
+    let values: Vec<u64> = vec![2, 3, 5, 7, 9];
+    let degree: usize = values.len();
+
+    // Create a domain for array
+    // `next_power_of_two` is Rust's standard library
+    let domain_size: usize = degree.next_power_of_two();
+    // `Radix2EvaluationDomain` comes from the `ark_poly` crate.
+    let domain: Radix2EvaluationDomain<Fr> =
+        Radix2EvaluationDomain::<Fr>::new(domain_size).expect("unsupported domain size");
+    // Print results
+    println!("domain size: {}", domain.size());
+    println!("omega (generator): {}", domain.group_gen());
 
     // P_A evaluations: input values padded with 1s to fill the domain.
     let mut a_evals: Vec<Fr> = values.iter().map(|v| Fr::from(*v)).collect();
@@ -52,18 +59,19 @@ fn main() {
     transition_numerator = &pb - &transition_numerator;
     transition_numerator = &transition_numerator * &x_minus_last_root;
 
-    let (q_transition, transition_remainder) =
-        DenseOrSparsePolynomial::from(transition_numerator)
-            .divide_with_q_and_r(&vanishing)
-            .expect("transition division should succeed");
+    let (q_transition, transition_remainder) = DenseOrSparsePolynomial::from(transition_numerator)
+        .divide_with_q_and_r(&vanishing)
+        .expect("transition division should succeed");
     assert!(transition_remainder.is_zero());
 
     // Constraint 2 (boundary):
     // P_A(X) - P_B(X) = (X - w^{degree-1}) * Q_boundary(X)
     let degree_root = domain.element(degree - 1);
-    let x_minus_degree_root = DenseOrSparsePolynomial::from(
-        DensePolynomial::<Fr>::from_coefficients_vec(vec![-degree_root, Fr::one()]),
-    );
+    let x_minus_degree_root =
+        DenseOrSparsePolynomial::from(DensePolynomial::<Fr>::from_coefficients_vec(vec![
+            -degree_root,
+            Fr::one(),
+        ]));
     let boundary_numerator = DenseOrSparsePolynomial::from(&pa - &pb);
     let (q_boundary, boundary_remainder) = boundary_numerator
         .divide_with_q_and_r(&x_minus_degree_root)
